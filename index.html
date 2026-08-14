@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>HaxClone — فوتبال آنلاین</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -122,5 +122,11 @@
   </div>
 
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script type="module" src="js/main.js"></script></body>
+<script type="module" src="js/main.js"></script>
+  <!-- کنترل‌های لمسی (فقط روی موبایل نمایش داده میشه) -->
+  <div id="touchControls">
+    <div id="touchMove" class="touch-stick"></div>
+    <div id="touchAim" class="touch-stick"></div>
+    <button id="touchKick" type="button">⚽ شوت</button>
+  </div></body>
 </html>

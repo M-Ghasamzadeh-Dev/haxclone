@@ -1,5 +1,5 @@
 // =========================================================
-// render.js — رسم صحنه‌ی بازی روی canvas؛ اندازه‌ی زمین از world.field میاد
+// render.js — رسم صحنه‌ی بازی روی canvas
 // =========================================================
 import { CONFIG } from './config.js';
 
@@ -33,8 +33,8 @@ export function createRenderer(canvas) {
       canvas.height = field.H;
       lastFieldId = field.id;
     }
-    const GOAL_Y1 = field.H / 2 - field.GOAL_WIDTH / 2;
-    const GOAL_Y2 = field.H / 2 + field.GOAL_WIDTH / 2;
+    const GOAL_Y1 = field.H/2 - field.GOAL_WIDTH/2;
+    const GOAL_Y2 = field.H/2 + field.GOAL_WIDTH/2;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
@@ -44,14 +44,14 @@ export function createRenderer(canvas) {
     ctx.fillRect(-PAD, 0, canvas.width, field.H);
     for (let i = 0; i < 10; i++) {
       ctx.fillStyle = i % 2 === 0 ? '#2e7d32' : '#2b7230';
-      ctx.fillRect(i * (field.W / 10), 0, field.W / 10, field.H);
+      ctx.fillRect(i * (field.W/10), 0, field.W/10, field.H);
     }
 
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
     ctx.lineWidth = 3;
     ctx.strokeRect(3, 3, field.W - 6, field.H - 6);
-    ctx.beginPath(); ctx.moveTo(field.W / 2, 0); ctx.lineTo(field.W / 2, field.H); ctx.stroke();
-    ctx.beginPath(); ctx.arc(field.W / 2, field.H / 2, Math.min(60, field.H / 4), 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(field.W/2, 0); ctx.lineTo(field.W/2, field.H); ctx.stroke();
+    ctx.beginPath(); ctx.arc(field.W/2, field.H/2, Math.min(60, field.H/4), 0, Math.PI*2); ctx.stroke();
 
     drawGoalNet(0, GOAL_Y1, GOAL_Y2, field.GOAL_DEPTH, -1);
     drawGoalNet(field.W, GOAL_Y1, GOAL_Y2, field.GOAL_DEPTH, 1);
@@ -60,7 +60,7 @@ export function createRenderer(canvas) {
       const p = world.players[id];
       ctx.beginPath();
       ctx.fillStyle = p.team === 'red' ? '#ff5c5c' : '#5c9dff';
-      ctx.arc(p.x, p.y, CONFIG.PLAYER.R, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, CONFIG.PLAYER.R, 0, Math.PI*2);
       ctx.fill();
       ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
@@ -70,39 +70,44 @@ export function createRenderer(canvas) {
     const ball = world.ball;
     ctx.beginPath();
     ctx.fillStyle = '#fff';
-    ctx.arc(ball.x, ball.y, CONFIG.BALL.R, 0, Math.PI * 2);
+    ctx.arc(ball.x, ball.y, CONFIG.BALL.R, 0, Math.PI*2);
     ctx.fill();
     ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5; ctx.stroke();
 
     if (ball.stuckTo) {
-      // حلقه‌ی زرد دور توپِ چسبیده
+      // حلقه‌ی زرد دور توپ چسبیده
       ctx.strokeStyle = 'rgba(255,255,0,0.7)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(ball.x, ball.y, CONFIG.BALL.R + 3, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, CONFIG.BALL.R + 3, 0, Math.PI*2); ctx.stroke();
 
-      // فلش نشانه‌گیری: جهت شوت رو نشون میده
+      // فلش نشانه‌گیری: دقیقاً به سمت ماوس/جوی‌استیک
       const carrier = world.players[ball.stuckTo];
       if (carrier) {
-        const ang = Math.atan2(carrier.facing.y, carrier.facing.x);
-        const x1 = ball.x + Math.cos(ang) * (CONFIG.BALL.R + 5);
-        const y1 = ball.y + Math.sin(ang) * (CONFIG.BALL.R + 5);
-        const x2 = ball.x + Math.cos(ang) * (CONFIG.BALL.R + 30);
-        const y2 = ball.y + Math.sin(ang) * (CONFIG.BALL.R + 30);
-        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-        ctx.setLineDash([]);
-        // نوک فلش
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.beginPath();
-        ctx.moveTo(x2 + Math.cos(ang) * 7, y2 + Math.sin(ang) * 7);
-        ctx.lineTo(x2 + Math.cos(ang + 2.5) * 6, y2 + Math.sin(ang + 2.5) * 6);
-        ctx.lineTo(x2 + Math.cos(ang - 2.5) * 6, y2 + Math.sin(ang - 2.5) * 6);
-        ctx.closePath(); ctx.fill();
+        const dir = carrier.aimDir || carrier.facing;
+        if (dir) {
+          const ang = Math.atan2(dir.y, dir.x);
+          const startR = CONFIG.BALL.R + 6;
+          const endR = CONFIG.BALL.R + 40;
+          const x1 = ball.x + Math.cos(ang) * startR;
+          const y1 = ball.y + Math.sin(ang) * startR;
+          const x2 = ball.x + Math.cos(ang) * endR;
+          const y2 = ball.y + Math.sin(ang) * endR;
+          ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.setLineDash([]);
+          // نوک فلش
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.beginPath();
+          ctx.moveTo(x2 + Math.cos(ang) * 9, y2 + Math.sin(ang) * 9);
+          ctx.lineTo(x2 + Math.cos(ang + 2.5) * 7, y2 + Math.sin(ang + 2.5) * 7);
+          ctx.lineTo(x2 + Math.cos(ang - 2.5) * 7, y2 + Math.sin(ang - 2.5) * 7);
+          ctx.closePath(); ctx.fill();
+        }
       }
     }
 
-    // کیک‌آف: شمارش معکوس بعد از گل
+    // کیک‌آف
     if (world.kickoff && world.kickoff.active) {
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.fillRect(0, 0, field.W, field.H);
@@ -110,20 +115,20 @@ export function createRenderer(canvas) {
       ctx.font = 'bold 22px sans-serif';
       ctx.textAlign = 'center';
       const secs = Math.ceil(world.kickoff.remainingMs / 1000);
-      ctx.fillText(`شروع مجدد در ${secs}...`, field.W / 2, field.H / 2 - 40);
+      ctx.fillText(`شروع مجدد در ${secs}...`, field.W/2, field.H/2 - 40);
     }
 
     // بنر پایان بازی
     if (world.match.status === 'ended') {
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(0, field.H / 2 - 55, field.W, 110);
+      ctx.fillRect(0, field.H/2 - 55, field.W, 110);
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 30px sans-serif';
       ctx.textAlign = 'center';
       const text = world.match.winner === 'draw'
         ? 'بازی مساوی شد!'
         : `تیم ${world.match.winner === 'red' ? 'قرمز' : 'آبی'} برد! 🏆`;
-      ctx.fillText(text, field.W / 2, field.H / 2 + 10);
+      ctx.fillText(text, field.W/2, field.H/2 + 10);
     }
 
     ctx.restore();

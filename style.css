@@ -252,3 +252,23 @@ canvas {
   .logo h1 { font-size: 32px; }
   body { padding: 16px 10px; }
 }
+/* ---------- کنترل‌های لمسی (موبایل) ---------- */
+#touchControls { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+.touch-stick {
+  position: absolute; width: 130px; height: 130px; border-radius: 50%;
+  background: rgba(255,255,255,0.07); border: 2px solid rgba(255,255,255,0.25);
+  pointer-events: auto; touch-action: none;
+}
+#touchMove { left: 18px; bottom: 18px; }
+#touchAim { right: 18px; bottom: 18px; }
+.tj-knob {
+  position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(255,255,255,0.45); transform: translate(-50%,-50%); pointer-events: none;
+}
+#touchKick {
+  position: absolute; right: 36px; bottom: 175px; width: 88px; height: 88px; border-radius: 50%;
+  border: none; background: rgba(79,195,247,0.9); color: #06232f;
+  font-size: 16px; font-weight: 800; pointer-events: auto; touch-action: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4); font-family: inherit;
+}
+#touchKick:active { background: #7fd6ff; }

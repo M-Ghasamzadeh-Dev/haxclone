@@ -35,9 +35,11 @@ let world = null;
 let keys = {};
 let wasEnded = false;
 
-// ---------- نشانه‌گیری با ماوس ----------
-let aimPoint = null;    // نقطه‌ی نشانه‌گیری (مختصات زمین)
-let kickQueued = false; // شوت با کلیک چپ (تا بین فریم‌ها گم نشه)
+// ---------- وضعیت ورودی (ماوس + کیبورد + لمس) ----------
+let aimPoint = null;      // نشانه‌گیری با ماوس (مختصات زمین)
+let kickQueued = false;   // شوت با کلیک یا دکمه لمسی
+let moveVec = { x: 0, y: 0 }; // جوی‌استیک حرکت (لمسی)
+let aimVec = null;        // جوی‌استیک نشانه (لمسی) — بردار واحد یا null
 
 function updateAim(e) {
   if (!world || !canvas.clientWidth) return;
@@ -51,12 +53,8 @@ function updateAim(e) {
   };
 }
 canvas.addEventListener('mousemove', updateAim);
-canvas.addEventListener('mousedown', (e) => {
-  if (e.button === 0) { // فقط کلیک چپ
-    sound.unlock();
-    updateAim(e);
-    kickQueued = true;
-  }
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 0) { sound.unlock(); updateAim(e); kickQueued = true; }
 });
 
 // ---------- تب‌ها ----------
@@ -118,7 +116,7 @@ document.getElementById('createBtn').onclick = () => {
       myIdBox.textContent = 'کد اتاق تو (بفرست برای دوستت): ' + id;
       roomCodeShow.textContent = 'کد اتاق: ' + id;
       statusMsg.textContent = 'اتاق ساخته شد. منتظر بازیکن‌ها بمون.';
-      chat.log('sys', `${myNick} اتاق رو ساخت. (زمین: ${world.field.name} | ظرفیت هر تیم: ${settings.teamSize || '∞'} | زمان: ${settings.durationMin || '∞'} دقیقه | امتیاز برد: ${settings.goalLimit || '∞'})`);
+      chat.log('sys', `${myNick} اتاق رو ساخت. (زمین: ${world.field.name})`);
       enterGame(true);
     },
     onError: (err) => { statusMsg.textContent = 'خطا: ' + err.type; },
@@ -140,7 +138,7 @@ document.getElementById('joinBtn').onclick = () => {
   });
 };
 
-// ---------- سمت هاست: پردازش داده‌های کلاینت‌ها ----------
+// ---------- سمت هاست ----------
 function handleHostData(conn, data) {
   if (data.type === 'join') {
     let team = data.team;
@@ -181,7 +179,7 @@ function broadcastChat(name, team, text) {
   chat.log(team, `${name}: ${text}`);
 }
 
-// ---------- سمت کلاینت: پردازش داده‌های هاست ----------
+// ---------- سمت کلاینت ----------
 function handleClientData(data) {
   if (data.type === 'welcome') {
     statusMsg.textContent = 'وارد اتاق شدی!';
@@ -220,7 +218,7 @@ function enterGame(isHost) {
   gameWrap.style.display = 'flex';
   let last = performance.now();
   requestAnimationFrame(function loop(now) {
-    const dt = Math.min(now - last, 50); last = now; // کلیپ برای جلوگیری از پرش فیزیک
+    const dt = Math.min(now - last, 50); last = now;
     tick(dt, now, isHost);
     requestAnimationFrame(loop);
   });
@@ -278,15 +276,88 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
+// ---------- ساخت ورودی نهایی (کیبورد + ماوس + لمس) ----------
 function getMyInput() {
   const kick = !!keys[' '] || kickQueued;
   kickQueued = false;
-  return {
-    up: !!keys['ArrowUp'], down: !!keys['ArrowDown'],
-    left: !!keys['ArrowLeft'], right: !!keys['ArrowRight'],
-    kick,
-    aim: aimPoint, // نقطه‌ی ماوس برای نشانه‌گیری ۳۶۰ درجه
-  };
+
+  let up = !!keys['ArrowUp'], down = !!keys['ArrowDown'];
+  let left = !!keys['ArrowLeft'], right = !!keys['ArrowRight'];
+
+  // حرکت لمسی (جوی‌استیک چپ) جایگزین کیبورد میشه
+  if (Math.abs(moveVec.x) > 0.25 || Math.abs(moveVec.y) > 0.25) {
+    left  = moveVec.x < -0.25;
+    right = moveVec.x >  0.25;
+    up    = moveVec.y < -0.25;
+    down  = moveVec.y >  0.25;
+  }
+
+  // نشانه: ماوس، و بعد جوی‌استیک لمسی
+  let aim = aimPoint;
+  if (aimVec) {
+    const me = world && world.players[net.state.myId];
+    if (me) aim = { x: me.x + aimVec.x * 400, y: me.y + aimVec.y * 400 };
+  }
+
+  return { up, down, left, right, kick, aim };
+}
+
+// ---------- کنترل‌های لمسی (موبایل) ----------
+setupTouchControls();
+function setupTouchControls() {
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const wrap = document.getElementById('touchControls');
+  if (!isTouch || !wrap) return;
+  wrap.style.display = 'block';
+
+  makeJoystick(document.getElementById('touchMove'), (x, y) => { moveVec = { x, y }; });
+  makeJoystick(document.getElementById('touchAim'), (x, y) => {
+    const len = Math.hypot(x, y);
+    aimVec = len > 0.2 ? { x: x/len, y: y/len } : null;
+  });
+  const kickBtn = document.getElementById('touchKick');
+  kickBtn.addEventListener('touchstart', e => {
+    e.preventDefault(); sound.unlock(); kickQueued = true;
+  }, { passive: false });
+}
+
+function makeJoystick(container, onChange) {
+  const knob = document.createElement('div');
+  knob.className = 'tj-knob';
+  container.appendChild(knob);
+  const R = 42; // حداکثر جابجایی گوی (px)
+  let touchId = null;
+
+  function center() {
+    const r = container.getBoundingClientRect();
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
+  }
+  function handle(t) {
+    const c = center();
+    let dx = t.clientX - c.x, dy = t.clientY - c.y;
+    const len = Math.hypot(dx, dy);
+    if (len > R) { dx = dx/len*R; dy = dy/len*R; }
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    onChange(dx/R, dy/R);
+  }
+  container.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (touchId !== null) return;
+    const t = e.changedTouches[0]; touchId = t.identifier; handle(t);
+  }, { passive: false });
+  container.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === touchId) handle(t);
+  }, { passive: false });
+  function release(e) {
+    for (const t of e.changedTouches) if (t.identifier === touchId) {
+      touchId = null;
+      knob.style.transform = 'translate(-50%,-50%)';
+      onChange(0, 0);
+    }
+  }
+  container.addEventListener('touchend', release);
+  container.addEventListener('touchcancel', release);
 }
 
 // ---------- UI کمکی ----------
