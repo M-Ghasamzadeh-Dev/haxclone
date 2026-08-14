@@ -33,7 +33,6 @@ export function createRenderer(canvas) {
       canvas.height = field.H;
       lastFieldId = field.id;
     }
-
     const GOAL_Y1 = field.H / 2 - field.GOAL_WIDTH / 2;
     const GOAL_Y2 = field.H / 2 + field.GOAL_WIDTH / 2;
 
@@ -43,7 +42,6 @@ export function createRenderer(canvas) {
 
     ctx.fillStyle = '#12331a';
     ctx.fillRect(-PAD, 0, canvas.width, field.H);
-
     for (let i = 0; i < 10; i++) {
       ctx.fillStyle = i % 2 === 0 ? '#2e7d32' : '#2b7230';
       ctx.fillRect(i * (field.W / 10), 0, field.W / 10, field.H);
@@ -75,12 +73,36 @@ export function createRenderer(canvas) {
     ctx.arc(ball.x, ball.y, CONFIG.BALL.R, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5; ctx.stroke();
+
     if (ball.stuckTo) {
+      // حلقه‌ی زرد دور توپِ چسبیده
       ctx.strokeStyle = 'rgba(255,255,0,0.7)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(ball.x, ball.y, CONFIG.BALL.R + 3, 0, Math.PI * 2); ctx.stroke();
+
+      // فلش نشانه‌گیری: جهت شوت رو نشون میده
+      const carrier = world.players[ball.stuckTo];
+      if (carrier) {
+        const ang = Math.atan2(carrier.facing.y, carrier.facing.x);
+        const x1 = ball.x + Math.cos(ang) * (CONFIG.BALL.R + 5);
+        const y1 = ball.y + Math.sin(ang) * (CONFIG.BALL.R + 5);
+        const x2 = ball.x + Math.cos(ang) * (CONFIG.BALL.R + 30);
+        const y2 = ball.y + Math.sin(ang) * (CONFIG.BALL.R + 30);
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.setLineDash([]);
+        // نوک فلش
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.beginPath();
+        ctx.moveTo(x2 + Math.cos(ang) * 7, y2 + Math.sin(ang) * 7);
+        ctx.lineTo(x2 + Math.cos(ang + 2.5) * 6, y2 + Math.sin(ang + 2.5) * 6);
+        ctx.lineTo(x2 + Math.cos(ang - 2.5) * 6, y2 + Math.sin(ang - 2.5) * 6);
+        ctx.closePath(); ctx.fill();
+      }
     }
 
-    // کیک‌آف: نمایش شمارش معکوس کوتاه بعد از گل
+    // کیک‌آف: شمارش معکوس بعد از گل
     if (world.kickoff && world.kickoff.active) {
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.fillRect(0, 0, field.W, field.H);

@@ -33,7 +33,31 @@ let myNick = 'Player';
 let myTeam = 'red';
 let world = null;
 let keys = {};
-let wasEnded = false; // برای اینکه بنر پایان بازی فقط یه‌بار صدای سوت بخوره
+let wasEnded = false;
+
+// ---------- نشانه‌گیری با ماوس ----------
+let aimPoint = null;    // نقطه‌ی نشانه‌گیری (مختصات زمین)
+let kickQueued = false; // شوت با کلیک چپ (تا بین فریم‌ها گم نشه)
+
+function updateAim(e) {
+  if (!world || !canvas.clientWidth) return;
+  const field = world.field;
+  const PAD = field.GOAL_DEPTH + 4;
+  const scaleX = canvas.width / canvas.clientWidth;
+  const scaleY = canvas.height / canvas.clientHeight;
+  aimPoint = {
+    x: e.offsetX * scaleX - PAD,
+    y: e.offsetY * scaleY,
+  };
+}
+canvas.addEventListener('mousemove', updateAim);
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 0) { // فقط کلیک چپ
+    sound.unlock();
+    updateAim(e);
+    kickQueued = true;
+  }
+});
 
 // ---------- تب‌ها ----------
 const tabHostBtn = document.getElementById('tabHostBtn');
@@ -75,7 +99,6 @@ document.getElementById('createBtn').onclick = () => {
     goalLimit: parseInt(document.getElementById('cfgGoalLimit').value, 10) || 0,
   };
   statusMsg.textContent = 'در حال ساخت اتاق...';
-
   world = createWorld(settings);
 
   net.on('hostData', (conn, data) => handleHostData(conn, data));
@@ -109,9 +132,7 @@ document.getElementById('joinBtn').onclick = () => {
   const code = document.getElementById('joinInput').value.trim();
   if (!code) { statusMsg.textContent = 'کد اتاق رو وارد کن.'; return; }
   statusMsg.textContent = 'در حال اتصال...';
-
   net.on('clientData', (data) => handleClientData(data));
-
   net.startClient(code, { name: myNick, team: myTeam }, {
     onOpen: () => { statusMsg.textContent = 'متصل شد! منتظر تایید ورود...'; },
     onError: (err) => { statusMsg.textContent = 'خطا در اتصال: ' + (err.type || err); },
@@ -119,7 +140,7 @@ document.getElementById('joinBtn').onclick = () => {
   });
 };
 
-// ---------- سمت هاست: پردازش داده‌های رسیده از کلاینت‌ها ----------
+// ---------- سمت هاست: پردازش داده‌های کلاینت‌ها ----------
 function handleHostData(conn, data) {
   if (data.type === 'join') {
     let team = data.team;
@@ -160,7 +181,7 @@ function broadcastChat(name, team, text) {
   chat.log(team, `${name}: ${text}`);
 }
 
-// ---------- سمت کلاینت: پردازش داده‌های رسیده از هاست ----------
+// ---------- سمت کلاینت: پردازش داده‌های هاست ----------
 function handleClientData(data) {
   if (data.type === 'welcome') {
     statusMsg.textContent = 'وارد اتاق شدی!';
@@ -199,7 +220,7 @@ function enterGame(isHost) {
   gameWrap.style.display = 'flex';
   let last = performance.now();
   requestAnimationFrame(function loop(now) {
-    const dt = now - last; last = now;
+    const dt = Math.min(now - last, 50); last = now; // کلیپ برای جلوگیری از پرش فیزیک
     tick(dt, now, isHost);
     requestAnimationFrame(loop);
   });
@@ -207,7 +228,8 @@ function enterGame(isHost) {
 
 function tick(dtMs, now, isHost) {
   if (isHost) {
-    world.players[net.state.myId]._input = getMyInput();
+    const me = world.players[net.state.myId];
+    if (me) me._input = getMyInput();
     const events = stepPhysics(world, dtMs, now);
     if (events.goal) {
       chat.log('sys', `⚽ گل برای تیم ${events.goal === 'red' ? 'قرمز' : 'آبی'}!`);
@@ -255,11 +277,15 @@ window.addEventListener('keydown', e => {
   keys[e.key] = true;
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
+
 function getMyInput() {
+  const kick = !!keys[' '] || kickQueued;
+  kickQueued = false;
   return {
     up: !!keys['ArrowUp'], down: !!keys['ArrowDown'],
     left: !!keys['ArrowLeft'], right: !!keys['ArrowRight'],
-    kick: !!keys[' '],
+    kick,
+    aim: aimPoint, // نقطه‌ی ماوس برای نشانه‌گیری ۳۶۰ درجه
   };
 }
 
@@ -268,6 +294,7 @@ function updateScoreUI() {
   scoreEl.innerHTML = `<span class="red">${world.score.red}</span> : <span class="blue">${world.score.blue}</span>`;
   timerEl.textContent = world.settings.durationMin > 0 ? formatTime(world.match.timeLeftMs) : '∞';
 }
+
 function renderPlayerList(list) {
   playerListEl.innerHTML = list.map(p =>
     `<div class="team-${p.team}">${p.team === 'red' ? '🔴' : '🔵'} ${p.name}</div>`
