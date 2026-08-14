@@ -103,10 +103,18 @@ export function stepPhysics(world, dtMs, now) {
     const p = world.players[id];
     const inp = p._input || {};
     let ax = 0, ay = 0;
-    if (inp.left) ax -= P.ACCEL;
-    if (inp.right) ax += P.ACCEL;
-    if (inp.up) ay -= P.ACCEL;
-    if (inp.down) ay += P.ACCEL;
+
+    // ورودی آنالوگ (جوی‌استیک موبایل) → کنترل سرعت با میزان کج‌کردن
+    const hasAnalog = typeof inp.mx === 'number' && (inp.mx !== 0 || inp.my !== 0);
+    if (hasAnalog) {
+      ax = inp.mx * P.ACCEL;
+      ay = inp.my * P.ACCEL;
+    } else {
+      if (inp.left) ax -= P.ACCEL;
+      if (inp.right) ax += P.ACCEL;
+      if (inp.up) ay -= P.ACCEL;
+      if (inp.down) ay += P.ACCEL;
+    }
 
     const hasAim = !!(inp.aim && Number.isFinite(inp.aim.x) && Number.isFinite(inp.aim.y));
     const carrying = ball.stuckTo === id;
@@ -134,9 +142,7 @@ export function stepPhysics(world, dtMs, now) {
       const dx = inp.aim.x - p.x, dy = inp.aim.y - p.y;
       const distAim = Math.hypot(dx, dy);
       if (distAim > 4) {
-        // جهت دقیق نشانه (برای رسم فلش، مستقل از facing)
         p.aimDir = { x: dx/distAim, y: dy/distAim };
-        // چرخش سریع و نرمِ جهت حمل به سمت نشانه
         const targetAng = Math.atan2(dy, dx);
         const curAng = Math.atan2(p.facing.y, p.facing.x);
         let diff = targetAng - curAng;

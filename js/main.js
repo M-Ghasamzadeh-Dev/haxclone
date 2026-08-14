@@ -34,23 +34,44 @@ let myTeam = 'red';
 let world = null;
 let keys = {};
 let wasEnded = false;
+let hostTimer = null;
+let joinTimer = null;
 
-// ---------- وضعیت ورودی (ماوس + کیبورد + لمس) ----------
-let aimPoint = null;      // نشانه‌گیری با ماوس (مختصات زمین)
+// ---------- وضعیت ورودی ----------
+let aimPoint = null;      // نشانه‌گیری با ماوس (فقط دسکتاپ)
 let kickQueued = false;   // شوت با کلیک یا دکمه لمسی
-let moveVec = { x: 0, y: 0 }; // جوی‌استیک حرکت (لمسی)
-let aimVec = null;        // جوی‌استیک نشانه (لمسی) — بردار واحد یا null
+let moveVec = { x: 0, y: 0 }; // جوی‌استیک حرکت (موبایل، آنالوگ)
 
+// ---------- پیام‌های خطای فارسی PeerJS ----------
+function peerErrorMsg(err) {
+  const t = err && err.type;
+  switch (t) {
+    case 'peerjs-not-loaded':
+      return '⚠️ کتابخانه‌ی اتصال (PeerJS) لود نشده. ادبلاکر/فیلترشکن رو غیرفعال کن و صفحه رو رفرش کن.';
+    case 'peer-unavailable':
+      return 'اتاق پیدا نشد. کد اشتباهه یا هاست آفلاینه.';
+    case 'network':
+    case 'server-error':
+    case 'socket-error':
+    case 'socket-closed':
+      return '⚠️ اتصال به سرور برقرار نشد. اینترنت/ادبلاکر/VPN رو چک کن و دوباره امتحان کن.';
+    case 'unavailable-id':
+      return 'این شناسه قبلاً گرفته شده. دوباره تلاش کن.';
+    case 'browser-incompatible':
+      return 'مرورگر تو از WebRTC پشتیبانی نمی‌کنه.';
+    default:
+      return 'خطا: ' + (t || 'نامشخص');
+  }
+}
+
+// ---------- ماوس (دسکتاپ) ----------
 function updateAim(e) {
   if (!world || !canvas.clientWidth) return;
   const field = world.field;
   const PAD = field.GOAL_DEPTH + 4;
   const scaleX = canvas.width / canvas.clientWidth;
   const scaleY = canvas.height / canvas.clientHeight;
-  aimPoint = {
-    x: e.offsetX * scaleX - PAD,
-    y: e.offsetY * scaleY,
-  };
+  aimPoint = { x: e.offsetX * scaleX - PAD, y: e.offsetY * scaleY };
 }
 canvas.addEventListener('mousemove', updateAim);
 canvas.addEventListener('mousedown', e => {
@@ -89,6 +110,10 @@ muteBtn.onclick = () => {
 // ---------- ساخت اتاق ----------
 document.getElementById('createBtn').onclick = () => {
   sound.unlock();
+  if (typeof Peer === 'undefined') {
+    statusMsg.textContent = peerErrorMsg({ type: 'peerjs-not-loaded' });
+    return;
+  }
   myNick = (document.getElementById('nickInput').value || 'Host').slice(0, 14);
   const settings = {
     mapId: document.getElementById('cfgMap').value,
@@ -109,8 +134,17 @@ document.getElementById('createBtn').onclick = () => {
     broadcastPlayerList();
   });
 
+  // تایم‌اوت: اگه تا ۱۲ ثانیه وصل نشد، پیام واضح بده
+  clearTimeout(hostTimer);
+  hostTimer = setTimeout(() => {
+    if (gameWrap.style.display !== 'flex') {
+      statusMsg.textContent = '⚠️ اتصال به سرور برقرار نشد. ادبلاکر/VPN رو غیرفعال کن، صفحه رو رفرش کن و دوباره امتحان کن.';
+    }
+  }, 12000);
+
   net.startHost({
     onOpen: (id) => {
+      clearTimeout(hostTimer);
       addPlayer(world, id, myNick, myTeam);
       myIdBox.style.display = 'block';
       myIdBox.textContent = 'کد اتاق تو (بفرست برای دوستت): ' + id;
@@ -119,21 +153,36 @@ document.getElementById('createBtn').onclick = () => {
       chat.log('sys', `${myNick} اتاق رو ساخت. (زمین: ${world.field.name})`);
       enterGame(true);
     },
-    onError: (err) => { statusMsg.textContent = 'خطا: ' + err.type; },
+    onError: (err) => {
+      clearTimeout(hostTimer);
+      statusMsg.textContent = peerErrorMsg(err);
+    },
   });
 };
 
 // ---------- ورود به اتاق ----------
 document.getElementById('joinBtn').onclick = () => {
   sound.unlock();
+  if (typeof Peer === 'undefined') {
+    statusMsg.textContent = peerErrorMsg({ type: 'peerjs-not-loaded' });
+    return;
+  }
   myNick = (document.getElementById('nickInput').value || 'Guest').slice(0, 14);
   const code = document.getElementById('joinInput').value.trim();
   if (!code) { statusMsg.textContent = 'کد اتاق رو وارد کن.'; return; }
   statusMsg.textContent = 'در حال اتصال...';
   net.on('clientData', (data) => handleClientData(data));
+
+  clearTimeout(joinTimer);
+  joinTimer = setTimeout(() => {
+    if (gameWrap.style.display !== 'flex') {
+      statusMsg.textContent = '⚠️ به اتاق وصل نشدی. کد رو چک کن؛ ادبلاکر/VPN رو غیرفعال کن و دوباره امتحان کن.';
+    }
+  }, 12000);
+
   net.startClient(code, { name: myNick, team: myTeam }, {
     onOpen: () => { statusMsg.textContent = 'متصل شد! منتظر تایید ورود...'; },
-    onError: (err) => { statusMsg.textContent = 'خطا در اتصال: ' + (err.type || err); },
+    onError: (err) => { clearTimeout(joinTimer); statusMsg.textContent = peerErrorMsg(err); },
     onClose: () => { statusMsg.textContent = 'اتصال به هاست قطع شد.'; },
   });
 };
@@ -182,11 +231,13 @@ function broadcastChat(name, team, text) {
 // ---------- سمت کلاینت ----------
 function handleClientData(data) {
   if (data.type === 'welcome') {
+    clearTimeout(joinTimer);
     statusMsg.textContent = 'وارد اتاق شدی!';
     world = createWorld(data.settings);
     world.field = data.field;
     enterGame(false);
   } else if (data.type === 'roomFull') {
+    clearTimeout(joinTimer);
     statusMsg.textContent = 'اتاق پره (هر دو تیم پر شدن).';
   } else if (data.type === 'state') {
     world.players = data.players;
@@ -276,33 +327,27 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
-// ---------- ساخت ورودی نهایی (کیبورد + ماوس + لمس) ----------
+// ---------- ساخت ورودی نهایی ----------
 function getMyInput() {
   const kick = !!keys[' '] || kickQueued;
   kickQueued = false;
 
-  let up = !!keys['ArrowUp'], down = !!keys['ArrowDown'];
-  let left = !!keys['ArrowLeft'], right = !!keys['ArrowRight'];
+  const up = !!keys['ArrowUp'], down = !!keys['ArrowDown'];
+  const left = !!keys['ArrowLeft'], right = !!keys['ArrowRight'];
 
-  // حرکت لمسی (جوی‌استیک چپ) جایگزین کیبورد میشه
-  if (Math.abs(moveVec.x) > 0.25 || Math.abs(moveVec.y) > 0.25) {
-    left  = moveVec.x < -0.25;
-    right = moveVec.x >  0.25;
-    up    = moveVec.y < -0.25;
-    down  = moveVec.y >  0.25;
+  // جوی‌استیک موبایل (آنالوگ → کنترل سرعت با میزان کج‌کردن)
+  let mx = 0, my = 0;
+  if (Math.abs(moveVec.x) > 0.15 || Math.abs(moveVec.y) > 0.15) {
+    mx = moveVec.x; my = moveVec.y;
   }
 
-  // نشانه: ماوس، و بعد جوی‌استیک لمسی
-  let aim = aimPoint;
-  if (aimVec) {
-    const me = world && world.players[net.state.myId];
-    if (me) aim = { x: me.x + aimVec.x * 400, y: me.y + aimVec.y * 400 };
-  }
+  // نشانه‌گیری فقط با ماوس (دسکتاپ)
+  const aim = aimPoint;
 
-  return { up, down, left, right, kick, aim };
+  return { up, down, left, right, kick, aim, mx, my };
 }
 
-// ---------- کنترل‌های لمسی (موبایل) ----------
+// ---------- کنترل‌های لمسی (موبایل): یک جوی‌استیک + یک دکمه شوت ----------
 setupTouchControls();
 function setupTouchControls() {
   const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -311,10 +356,7 @@ function setupTouchControls() {
   wrap.style.display = 'block';
 
   makeJoystick(document.getElementById('touchMove'), (x, y) => { moveVec = { x, y }; });
-  makeJoystick(document.getElementById('touchAim'), (x, y) => {
-    const len = Math.hypot(x, y);
-    aimVec = len > 0.2 ? { x: x/len, y: y/len } : null;
-  });
+
   const kickBtn = document.getElementById('touchKick');
   kickBtn.addEventListener('touchstart', e => {
     e.preventDefault(); sound.unlock(); kickQueued = true;
@@ -325,7 +367,7 @@ function makeJoystick(container, onChange) {
   const knob = document.createElement('div');
   knob.className = 'tj-knob';
   container.appendChild(knob);
-  const R = 42; // حداکثر جابجایی گوی (px)
+  const R = 45; // حداکثر جابجایی گوی
   let touchId = null;
 
   function center() {

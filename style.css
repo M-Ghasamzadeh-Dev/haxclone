@@ -255,20 +255,30 @@ canvas {
 /* ---------- کنترل‌های لمسی (موبایل) ---------- */
 #touchControls { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
 .touch-stick {
-  position: absolute; width: 130px; height: 130px; border-radius: 50%;
-  background: rgba(255,255,255,0.07); border: 2px solid rgba(255,255,255,0.25);
+  position: absolute; width: 140px; height: 140px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.28);
   pointer-events: auto; touch-action: none;
 }
-#touchMove { left: 18px; bottom: 18px; }
-#touchAim { right: 18px; bottom: 18px; }
+#touchMove { left: 20px; bottom: 24px; }
 .tj-knob {
-  position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%;
+  position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; border-radius: 50%;
   background: rgba(255,255,255,0.45); transform: translate(-50%,-50%); pointer-events: none;
 }
 #touchKick {
-  position: absolute; right: 36px; bottom: 175px; width: 88px; height: 88px; border-radius: 50%;
+  position: absolute; right: 24px; bottom: 34px; width: 96px; height: 96px; border-radius: 50%;
   border: none; background: rgba(79,195,247,0.9); color: #06232f;
-  font-size: 16px; font-weight: 800; pointer-events: auto; touch-action: none;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.4); font-family: inherit;
+  font-size: 17px; font-weight: 800; pointer-events: auto; touch-action: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4); font-family: inherit; line-height: 1.3;
 }
-#touchKick:active { background: #7fd6ff; }
+#touchKick:active { background: #7fd6ff; transform: scale(0.96); }
+
+/* ---------- حالت عمودی / گوشی ---------- */
+@media (max-width: 720px) {
+  body { padding: 10px 8px; }
+  #sidePanel { display: none; }              /* چت/لیست روی گوشی مخفی تا زمین جا بشه */
+  #mainArea { flex-direction: column; align-items: center; }
+  canvas { width: 100%; height: auto; }
+  #topBar { padding: 6px 10px; gap: 8px; }
+  #score { font-size: 18px; padding: 3px 12px; }
+  #timer { font-size: 15px; }
+}
