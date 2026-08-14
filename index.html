@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HaxClone - آنلاین</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<h1>Hax<span>Clone</span> - آنلاین</h1>
+
+<!-- ================= LOBBY ================= -->
+<div id="lobby">
+  <label>اسمت رو بنویس</label>
+  <input id="nickInput" maxlength="14" placeholder="مثلا: Ali">
+
+  <div class="team-pick">
+    <button type="button" class="redb active" id="pickRed">تیم قرمز</button>
+    <button type="button" class="blueb" id="pickBlue">تیم آبی</button>
+  </div>
+
+  <hr class="sep">
+
+  <div class="tabs">
+    <button type="button" class="active" id="tabHostBtn">ساخت اتاق (Host)</button>
+    <button type="button" id="tabJoinBtn">ورود به اتاق</button>
+  </div>
+
+  <!-- ---- Host tab: تنظیمات اتاق ---- -->
+  <div class="tabpane active" id="tabHost">
+    <label>نوع زمین</label>
+    <select id="cfgMap">
+      <option value="classic">کلاسیک</option>
+      <option value="big">زمین بزرگ</option>
+      <option value="small">زمین کوچک (سریع)</option>
+      <option value="corridor">زمین باریک (رفت‌وبرگشتی)</option>
+    </select>
+    <div class="row2">
+      <div>
+        <label>ظرفیت هر تیم</label>
+        <input id="cfgTeamSize" type="number" min="1" max="8" value="3">
+      </div>
+      <div>
+        <label>مدت بازی (دقیقه)</label>
+        <input id="cfgDuration" type="number" min="0" max="60" value="5">
+        <div class="hint">۰ = نامحدود</div>
+      </div>
+    </div>
+    <label>امتیاز برد (رسیدن به این گل = برد فوری)</label>
+    <input id="cfgGoalLimit" type="number" min="0" max="50" value="3">
+    <div class="hint">۰ = نامحدود. اگه هم زمان و هم امتیاز برد رو بذاری: هرکدوم زودتر برسه بازی تموم میشه؛ اگه زمان تموم شد و هیچکدوم نرسید، امتیاز بیشتر برنده‌ست و در صورت تساوی، مساوی اعلام میشه.</div>
+    <button class="btn-primary" id="createBtn">ساخت اتاق</button>
+  </div>
+
+  <!-- ---- Join tab ---- -->
+  <div class="tabpane" id="tabJoin">
+    <label>کد اتاق دوستت رو بچسبون</label>
+    <input id="joinInput" placeholder="کد اتاق...">
+    <button class="btn-secondary" id="joinBtn">ورود به اتاق</button>
+  </div>
+
+  <div id="myIdBox"></div>
+  <div id="statusMsg"></div>
+</div>
+
+<!-- ================= GAME ================= -->
+<div id="gameWrap">
+  <div id="topBar">
+    <div id="score"><span class="red">0</span> : <span class="blue">0</span></div>
+    <div id="timer">--:--</div>
+    <button id="muteBtn" type="button" title="قطع/وصل صدا">🔊</button>
+    <div id="roomCodeShow"></div>
+  </div>
+  <div id="restartBar" style="display:none; margin-bottom:8px;">
+    <button id="restartBtn" class="btn-primary" style="width:auto; padding:10px 22px;">🔁 بازی جدید</button>
+    <span id="restartWaitMsg" style="display:none; color:#f7c948; font-size:13px;">منتظر بمون تا هاست بازی جدید رو شروع کنه...</span>
+  </div>
+  <div id="mainArea">
+    <canvas id="field"></canvas>
+    <div id="sidePanel">
+      <div id="playerList"></div>
+      <div id="chatBox"></div>
+      <form id="chatForm">
+        <input id="chatInput" autocomplete="off" placeholder="پیام برای همه...">
+        <button type="submit">ارسال</button>
+      </form>
+    </div>
+  </div>
+  <div id="controlsHint">حرکت: کلیدهای جهت‌دار ← → ↑ ↓ &nbsp; | &nbsp; شوت/رها کردن توپ: Space</div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
